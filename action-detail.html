@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actions — RPL</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page">
+  <header class="topbar">
+    <a class="brand" href="index.html">RPL</a>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="plan-view.html">Plans</a>
+      <a href="action-detail.html" class="active">Actions</a>
+      <a href="ledger-view.html">Ledger</a>
+      <a href="report.html">Report</a>
+    </nav>
+  </header>
+  <main class="main">
+    <div class="card">
+      <p class="card-title">Action Detail</p>
+      <p class="card-sub">Select an action and trigger a lifecycle transition.</p>
+      <div class="field">
+        <label for="actionId">Action ID</label>
+        <input id="actionId" type="number" value="1" min="1">
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="transition('implement')">Implement</button>
+        <button class="btn btn-ghost"   onclick="transition('suspend')">Suspend</button>
+        <button class="btn btn-ghost"   onclick="transition('resume')">Resume</button>
+        <button class="btn btn-ghost"   onclick="transition('complete')">Complete</button>
+        <button class="btn btn-danger"  onclick="transition('abandon')">Abandon</button>
+      </div>
+      <pre id="output">Run a transition to see the response.</pre>
+    </div>
+  </main>
+  <script>
+    async function transition(eventName) {
+      const id = document.getElementById("actionId").value;
+      const out = document.getElementById("output");
+      out.textContent = "Loading...";
+      try {
+        const res = await fetch(`http://localhost:8080/api/actions/${id}/${eventName}`, { method: "POST" });
+        out.textContent = JSON.stringify(await res.json(), null, 2);
+      } catch (e) {
+        out.textContent = "Error: " + e.message;
+      }
+    }
+  </script>
+</body>
+</html>

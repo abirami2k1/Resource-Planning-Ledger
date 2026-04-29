@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — RPL</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page">
+  <header class="topbar">
+    <a class="brand" href="index.html">RPL</a>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="plan-view.html">Plans</a>
+      <a href="action-detail.html">Actions</a>
+      <a href="ledger-view.html">Ledger</a>
+      <a href="report.html">Report</a>
+    </nav>
+  </header>
+  <main class="main">
+    <div class="card">
+      <p class="card-title">Pool Accounts</p>
+      <p class="card-sub">Auto-refreshes every 10 seconds.</p>
+      <div id="alert" class="alert">One or more pool balances are below zero.</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Kind</th>
+            <th>Balance</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </main>
+  <script>
+    async function load() {
+      const rows = document.getElementById("rows");
+      const alertEl = document.getElementById("alert");
+      let hasNegative = false;
+
+      try {
+        const accounts = await fetch("http://localhost:8080/api/accounts").then(r => r.json());
+        rows.innerHTML = "";
+        accounts.filter(a => a.kind === "POOL").forEach(a => {
+          const balance = Number(a.balance ?? 0);
+          if (balance < 0) hasNegative = true;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${a.name}</td>
+            <td><span class="badge badge-pool">${a.kind}</span></td>
+            <td class="${balance < 0 ? "negative" : "positive"}">${balance.toFixed(2)}</td>`;
+          rows.appendChild(tr);
+        });
+      } catch {
+        rows.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">Could not reach backend.</td></tr>`;
+      }
+
+      alertEl.style.display = hasNegative ? "block" : "none";
+    }
+    load();
+    setInterval(load, 10000);
+  </script>
+</body>
+</html>
