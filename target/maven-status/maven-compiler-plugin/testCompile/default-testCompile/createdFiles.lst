@@ -1,0 +1,3 @@
+com/rpl/engine/DepthFirstPlanIteratorTest.class
+com/rpl/domain/state/StateClassesTest.class
+com/rpl/domain/composite/PlanStatusTest.class
