@@ -45,7 +45,7 @@
       const tbody = document.getElementById("entries");
       tbody.innerHTML = "";
       try {
-        const entries = await fetch(`http://localhost:8080/api/accounts/${id}/entries`).then(r => r.json());
+        const entries = await fetch(`https://project4-backened.onrender.com/api/accounts/${id}/entries`).then(r => r.json());
         if (!entries.length) {
           tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">No entries found.</td></tr>`;
           return;

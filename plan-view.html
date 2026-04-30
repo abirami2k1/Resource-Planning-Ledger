@@ -41,7 +41,7 @@
       const tree = document.getElementById("tree");
       tree.innerHTML = "";
       try {
-        const plan = await fetch(`http://localhost:8080/api/plans/${id}`).then(r => r.json());
+        const plan = await fetch(`https://project4-backened.onrender.com/api/plans/${id}`).then(r => r.json());
         const root = document.createElement("li");
         root.innerHTML = `<span><strong>${plan.name}</strong></span>${statusBadge(plan.status || "PROPOSED")}`;
         tree.appendChild(root);

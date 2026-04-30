@@ -42,7 +42,7 @@
       let hasNegative = false;
 
       try {
-        const accounts = await fetch("http://localhost:8080/api/accounts").then(r => r.json());
+        const accounts = await fetch("https://project4-backened.onrender.com/api/accounts").then(r => r.json());
         rows.innerHTML = "";
         accounts.filter(a => a.kind === "POOL").forEach(a => {
           const balance = Number(a.balance ?? 0);

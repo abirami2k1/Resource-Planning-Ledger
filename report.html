@@ -36,7 +36,7 @@
       const pre = document.getElementById("report");
       pre.textContent = "Loading...";
       try {
-        const report = await fetch(`http://localhost:8080/api/plans/${planId}/report`).then(r => r.json());
+        const report = await fetch(`https://project4-backened.onrender.com/api/plans/${planId}/report`).then(r => r.json());
         pre.textContent = report.join("\n");
       } catch (e) {
         pre.textContent = "Error: " + e.message;
