@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [ "**" ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   test:
@@ -27,13 +27,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
-          java-version: "17"
-          distribution: temurin
+          java-version: '17'
+          distribution: 'temurin'
       - run: mvn -q test
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/rpl
-          SPRING_DATASOURCE_USERNAME: rpl
-          SPRING_DATASOURCE_PASSWORD: rpl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -47,8 +43,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
-          java-version: "17"
-          distribution: temurin
+          java-version: '17'
+          distribution: 'temurin'
       - run: mvn -q package -DskipTests
       - run: docker build -t rpl .
 
@@ -58,4 +54,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK is not set; skipping deploy trigger."
+            exit 0
+          fi
+          curl -sSf -X POST "$RENDER_DEPLOY_HOOK"
