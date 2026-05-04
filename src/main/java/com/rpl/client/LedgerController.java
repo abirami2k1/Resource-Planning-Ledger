@@ -1,5 +1,6 @@
 package com.rpl.client;
 
+import com.rpl.client.dto.AccountBalanceResponse;
 import com.rpl.domain.Account;
 import com.rpl.domain.Entry;
 import com.rpl.manager.LedgerManager;
@@ -13,7 +14,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/accounts")
 public class LedgerController {
     private final LedgerManager ledgerManager;
-    public LedgerController(LedgerManager ledgerManager) { this.ledgerManager = ledgerManager; }
-    @GetMapping public List<Account> accounts() { return ledgerManager.allAccounts(); }
-    @GetMapping("/{id}/entries") public List<Entry> entries(@PathVariable Long id) { return ledgerManager.entriesForAccount(id); }
+
+    public LedgerController(LedgerManager ledgerManager) { 
+        this.ledgerManager = ledgerManager; 
+    }
+
+    @GetMapping
+    public List<AccountBalanceResponse> accounts() { 
+        return ledgerManager.allAccountsWithBalance(); 
+    }
+
+    @GetMapping("/{id}/entries") public List<Entry> entries(@PathVariable Long id) { 
+        return ledgerManager.entriesForAccount(id); 
+    }
 }

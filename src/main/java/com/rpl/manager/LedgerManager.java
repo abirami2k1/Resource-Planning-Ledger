@@ -2,6 +2,7 @@ package com.rpl.manager;
 
 import com.rpl.domain.Account;
 import com.rpl.domain.Entry;
+import com.rpl.client.dto.AccountBalanceResponse;
 import com.rpl.exception.NotFoundException;
 import com.rpl.resourceaccess.AccountRepository;
 import com.rpl.resourceaccess.EntryRepository;
@@ -20,6 +21,16 @@ public class LedgerManager {
 
     public List<Account> allAccounts() {
         return accountRepository.findAll();
+    }
+
+    public List<AccountBalanceResponse> allAccountsWithBalance() {
+        return accountRepository.findAll().stream()
+                .map(account -> new AccountBalanceResponse(
+                        account.getId(),
+                        account.getName(),
+                        account.getKind(),
+                        entryRepository.getBalanceForAccount(account.getId())))
+                .toList();
     }
 
     public List<Entry> entriesForAccount(Long accountId) {
