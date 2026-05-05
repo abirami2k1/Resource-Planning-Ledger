@@ -25,7 +25,7 @@ public class PlanController {
 
     @PostMapping
     public Plan create(@RequestBody PlanCreateRequest request) {
-        return planManager.create(request.name(), request.protocolId());
+        return planManager.create(request.name(), request.protocolId(), request.parentPlanId());
     }
 
     @GetMapping("/{id}")

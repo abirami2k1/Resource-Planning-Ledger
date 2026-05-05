@@ -7,6 +7,7 @@ import com.rpl.domain.ImplementedAction;
 import com.rpl.domain.LedgerTransaction;
 import com.rpl.domain.ResourceAllocation;
 import com.rpl.exception.NotFoundException;
+import com.rpl.manager.AuditLogManager;
 import com.rpl.resourceaccess.AccountRepository;
 import com.rpl.resourceaccess.EntryRepository;
 import com.rpl.resourceaccess.LedgerTransactionRepository;
@@ -17,20 +18,26 @@ public abstract class AbstractLedgerEntryGenerator {
     private final LedgerTransactionRepository transactionRepository;
     private final EntryRepository entryRepository;
     private final AccountRepository accountRepository;
+    private final PostingRuleEngine postingRuleEngine;
+    private final AuditLogManager auditLogManager;
 
     protected AbstractLedgerEntryGenerator(
             LedgerTransactionRepository transactionRepository,
             EntryRepository entryRepository,
-            AccountRepository accountRepository) {
+            AccountRepository accountRepository,
+            PostingRuleEngine postingRuleEngine,
+            AuditLogManager auditLogManager) {
         this.transactionRepository = transactionRepository;
         this.entryRepository = entryRepository;
         this.accountRepository = accountRepository;
+        this.postingRuleEngine = postingRuleEngine;
+        this.auditLogManager = auditLogManager;
     }
 
     public final void generateEntries(ImplementedAction action) {
         List<ResourceAllocation> allocations = selectAllocations(action);
         validate(allocations);
-        LedgerTransaction transaction = createTransaction(action);
+        LedgerTransaction lastTransaction = null;
         for (ResourceAllocation allocation : allocations) {
             Account pool = accountRepository.findPoolAccounts().stream()
                     .filter(a -> a.getResourceType().getId().equals(allocation.getResourceType().getId()))
@@ -41,11 +48,20 @@ public abstract class AbstractLedgerEntryGenerator {
             usage.setKind(AccountKind.USAGE);
             usage.setResourceType(allocation.getResourceType());
             usage = accountRepository.save(usage);
-            postEntries(buildWithdrawal(transaction, pool, allocation), buildDeposit(transaction, usage, allocation));
+            LedgerTransaction transaction = createTransaction(action);
+            lastTransaction = transaction;
+            postEntries(
+                    action,
+                    buildWithdrawal(transaction, pool, allocation),
+                    buildDeposit(transaction, usage, allocation));
+        }
+        if (lastTransaction != null) {
+            afterPost(lastTransaction);
         }
     }
 
     protected abstract List<ResourceAllocation> selectAllocations(ImplementedAction action);
+
     protected abstract void validate(List<ResourceAllocation> allocations);
 
     protected Entry buildWithdrawal(LedgerTransaction tx, Account account, ResourceAllocation allocation) {
@@ -74,8 +90,18 @@ public abstract class AbstractLedgerEntryGenerator {
         return transactionRepository.save(tx);
     }
 
-    protected final void postEntries(Entry withdrawal, Entry deposit) {
-        entryRepository.save(withdrawal);
+    protected void afterPost(LedgerTransaction tx) {
+        // Hook for subclasses / Week 2 extensions
+    }
+
+    protected final void postEntries(ImplementedAction action, Entry withdrawal, Entry deposit) {
+        Entry savedWithdrawal = entryRepository.save(withdrawal);
         entryRepository.save(deposit);
+        postingRuleEngine.evaluate(savedWithdrawal);
+        auditLogManager.record(
+                "LEDGER_ENTRIES_POSTED",
+                savedWithdrawal.getAccount() != null ? savedWithdrawal.getAccount().getId() : null,
+                savedWithdrawal.getId(),
+                action.getProposedAction().getId());
     }
 }

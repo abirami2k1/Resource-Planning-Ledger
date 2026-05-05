@@ -1,4 +1,4 @@
 package com.rpl.client.dto;
 
-public record PlanCreateRequest(String name, Long protocolId) {
+public record PlanCreateRequest(String name, Long protocolId, Long parentPlanId) {
 }

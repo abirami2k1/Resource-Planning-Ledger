@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.rpl.engine.PostingRuleEngineTest
+-------------------------------------------------------------------------------
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.136 s -- in com.rpl.engine.PostingRuleEngineTest

@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class AbandonedState implements ActionState {
     @Override
+    public String name() {
+        return "ABANDONED";
+    }
+
+    @Override
     public ActionStatus implement() { throw new IllegalStateTransitionException("Cannot implement from ABANDONED"); }
     @Override
     public ActionStatus suspend() { throw new IllegalStateTransitionException("Cannot suspend from ABANDONED"); }

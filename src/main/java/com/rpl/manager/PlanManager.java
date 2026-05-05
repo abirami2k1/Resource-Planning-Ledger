@@ -20,7 +20,7 @@ public class PlanManager {
         this.protocolRepository = protocolRepository;
     }
 
-    public Plan create(String name, Long protocolId) {
+    public Plan create(String name, Long protocolId, Long parentPlanId) {
         Plan plan = new Plan();
         plan.setName(name);
         if (protocolId != null) {
@@ -29,9 +29,15 @@ public class PlanManager {
             for (ProtocolStep step : protocol.getSteps()) {
                 ProposedAction action = new ProposedAction();
                 action.setName(step.getName());
-                action.setPlan(plan);
-                plan.getActions().add(action);
+                plan.addLeaf(action);
             }
+        }
+        if (parentPlanId != null) {
+            Plan parent = planRepository.findById(parentPlanId)
+                    .orElseThrow(() -> new NotFoundException("Parent plan not found"));
+            parent.addSubPlan(plan);
+            planRepository.save(parent);
+            return plan;
         }
         return planRepository.save(plan);
     }

@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProposedState implements ActionState {
     @Override
+    public String name() {
+        return "PROPOSED";
+    }
+
+    @Override
     public ActionStatus implement() { return ActionStatus.IN_PROGRESS; }
     @Override
     public ActionStatus suspend() { return ActionStatus.SUSPENDED; }

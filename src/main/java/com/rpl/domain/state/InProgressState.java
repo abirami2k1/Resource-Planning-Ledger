@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class InProgressState implements ActionState {
     @Override
+    public String name() {
+        return "IN_PROGRESS";
+    }
+
+    @Override
     public ActionStatus implement() { throw new IllegalStateTransitionException("Cannot implement from IN_PROGRESS"); }
     @Override
     public ActionStatus suspend() { return ActionStatus.SUSPENDED; }

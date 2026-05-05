@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class SuspendedState implements ActionState {
     @Override
+    public String name() {
+        return "SUSPENDED";
+    }
+
+    @Override
     public ActionStatus implement() { throw new IllegalStateTransitionException("Cannot implement from SUSPENDED"); }
     @Override
     public ActionStatus suspend() { throw new IllegalStateTransitionException("Cannot suspend from SUSPENDED"); }

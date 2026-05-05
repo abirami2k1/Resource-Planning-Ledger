@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class CompletedState implements ActionState {
     @Override
+    public String name() {
+        return "COMPLETED";
+    }
+
+    @Override
     public ActionStatus implement() { throw new IllegalStateTransitionException("Cannot implement from COMPLETED"); }
     @Override
     public ActionStatus suspend() { throw new IllegalStateTransitionException("Cannot suspend from COMPLETED"); }

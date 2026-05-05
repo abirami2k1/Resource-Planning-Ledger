@@ -4,6 +4,7 @@ import com.rpl.domain.ImplementedAction;
 import com.rpl.domain.ResourceAllocation;
 import com.rpl.domain.ResourceKind;
 import com.rpl.exception.ValidationException;
+import com.rpl.manager.AuditLogManager;
 import com.rpl.resourceaccess.AccountRepository;
 import com.rpl.resourceaccess.EntryRepository;
 import com.rpl.resourceaccess.LedgerTransactionRepository;
@@ -19,8 +20,10 @@ public class ConsumableLedgerEntryGenerator extends AbstractLedgerEntryGenerator
             LedgerTransactionRepository transactionRepository,
             EntryRepository entryRepository,
             AccountRepository accountRepository,
+            PostingRuleEngine postingRuleEngine,
+            AuditLogManager auditLogManager,
             ResourceAllocationRepository allocationRepository) {
-        super(transactionRepository, entryRepository, accountRepository);
+        super(transactionRepository, entryRepository, accountRepository, postingRuleEngine, auditLogManager);
         this.allocationRepository = allocationRepository;
     }
 

@@ -21,6 +21,8 @@ public class ImplementedAction {
     private String actualLocation;
 
     public Long getId() { return id; }
+
+    public void setId(Long id) { this.id = id; }
     public ProposedAction getProposedAction() { return proposedAction; }
     public void setProposedAction(ProposedAction proposedAction) { this.proposedAction = proposedAction; }
     public Instant getActualStart() { return actualStart; }
