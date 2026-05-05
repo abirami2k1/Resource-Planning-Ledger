@@ -21,7 +21,7 @@
   <main class="main">
     <div class="card">
       <p class="card-title">Plan Tree</p>
-      <p class="card-sub">View the hierarchy of a plan and its actions.</p>
+      <p class="card-sub">View nested sub-plans and actions from <code>GET /api/plans/{id}</code>.</p>
       <div class="field">
         <label for="planId">Plan ID</label>
         <input id="planId" type="number" value="1" min="1">
@@ -31,9 +31,35 @@
     </div>
   </main>
   <script>
+    const API_BASE = "https://project4-backened.onrender.com";
+
     function statusBadge(status) {
       const s = (status || "PROPOSED").toLowerCase();
       return `<span class="badge badge-${s}">${s}</span>`;
+    }
+
+    /** Render a plan node (composite): actions then nested sub-plans (recursive). */
+    function renderPlanBranch(plan) {
+      const li = document.createElement("li");
+      li.innerHTML = `<span><strong>${plan.name}</strong></span>${statusBadge(plan.status || "PROPOSED")}`;
+      const kids = document.createElement("ul");
+      kids.className = "tree";
+
+      (plan.actions || []).forEach(action => {
+        const aLi = document.createElement("li");
+        aLi.className = "tree-child";
+        aLi.innerHTML = `<span>${action.name}</span>${statusBadge(action.status)}`;
+        kids.appendChild(aLi);
+      });
+
+      (plan.subPlans || []).forEach(sub => {
+        kids.appendChild(renderPlanBranch(sub));
+      });
+
+      if (kids.childElementCount > 0) {
+        li.appendChild(kids);
+      }
+      return li;
     }
 
     async function loadPlan() {
@@ -41,16 +67,8 @@
       const tree = document.getElementById("tree");
       tree.innerHTML = "";
       try {
-        const plan = await fetch(`https://project4-backened.onrender.com/api/plans/${id}`).then(r => r.json());
-        const root = document.createElement("li");
-        root.innerHTML = `<span><strong>${plan.name}</strong></span>${statusBadge(plan.status || "PROPOSED")}`;
-        tree.appendChild(root);
-        (plan.actions || []).forEach(action => {
-          const child = document.createElement("li");
-          child.className = "tree-child";
-          child.innerHTML = `<span>${action.name}</span>${statusBadge(action.status)}`;
-          tree.appendChild(child);
-        });
+        const plan = await fetch(`${API_BASE}/api/plans/${id}`).then(r => r.json());
+        tree.appendChild(renderPlanBranch(plan));
       } catch {
         tree.innerHTML = `<li style="color:var(--muted)">Could not load plan.</li>`;
       }

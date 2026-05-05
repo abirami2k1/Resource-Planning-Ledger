@@ -21,12 +21,14 @@
   <main class="main">
     <div class="card">
       <p class="card-title">Ledger Entries</p>
-      <p class="card-sub">View all entries for a given account.</p>
+      <p class="card-sub">Sample data often uses memo account ID <strong>9</strong> (“Over-Consumption Alerts”). After F8 fires you’ll see <strong>positive</strong> amounts here (deficit size).</p>
       <div class="field">
         <label for="accountId">Account ID</label>
-        <input id="accountId" type="number" value="1" min="1">
+        <input id="accountId" type="number" value="9" min="1">
         <button class="btn btn-primary" onclick="loadEntries()">Load</button>
       </div>
+      <p class="card-sub">Quick open memo accounts from the API:</p>
+      <div id="memoShortcuts" class="field" style="flex-wrap:wrap;gap:8px"></div>
       <table>
         <thead>
           <tr>
@@ -40,12 +42,38 @@
     </div>
   </main>
   <script>
+    const API_BASE = "https://project4-backened.onrender.com";
+
+    async function loadMemoShortcuts() {
+      const wrap = document.getElementById("memoShortcuts");
+      wrap.innerHTML = "";
+      try {
+        const accounts = await fetch(`${API_BASE}/api/accounts`).then(r => r.json());
+        accounts.filter(a => a.kind === "ALERT_MEMO").forEach(a => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "btn btn-ghost";
+          b.textContent = `${a.name} (id ${a.id})`;
+          b.onclick = () => {
+            document.getElementById("accountId").value = a.id;
+            loadEntries();
+          };
+          wrap.appendChild(b);
+        });
+        if (!wrap.childElementCount) {
+          wrap.innerHTML = `<span style="color:var(--muted)">No ALERT_MEMO accounts returned.</span>`;
+        }
+      } catch {
+        wrap.innerHTML = `<span style="color:var(--muted)">Could not load accounts.</span>`;
+      }
+    }
+
     async function loadEntries() {
       const id = document.getElementById("accountId").value;
       const tbody = document.getElementById("entries");
       tbody.innerHTML = "";
       try {
-        const entries = await fetch(`https://project4-backened.onrender.com/api/accounts/${id}/entries`).then(r => r.json());
+        const entries = await fetch(`${API_BASE}/api/accounts/${id}/entries`).then(r => r.json());
         if (!entries.length) {
           tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">No entries found.</td></tr>`;
           return;
@@ -63,6 +91,8 @@
         tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">Could not reach backend.</td></tr>`;
       }
     }
+
+    loadMemoShortcuts();
   </script>
 </body>
 </html>

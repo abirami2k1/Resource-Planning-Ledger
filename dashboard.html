@@ -21,29 +21,81 @@
   <main class="main">
     <div class="card">
       <p class="card-title">Pool Accounts</p>
-      <p class="card-sub">Auto-refreshes every 10 seconds.</p>
+      <p class="card-sub">Completing an action withdraws from the matching pool. If balance drops below zero, <strong>F8</strong> posts an alert entry on the memo account (see below).</p>
       <div id="alert" class="alert">One or more pool balances are below zero.</div>
       <table>
         <thead>
           <tr>
             <th>Name</th>
             <th>Kind</th>
+            <th>ID</th>
             <th>Balance</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
+    <div class="card">
+      <p class="card-title">Alert memo accounts </p>
+      <p class="card-sub">Open <a href="ledger-view.html">Ledger</a>, enter this account ID, and click <strong>Load</strong> to see over-consumption alerts.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Balance</th>
+          </tr>
+        </thead>
+        <tbody id="memoRows"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <p class="card-title">Quick Create</p>
+      <p class="card-sub">Add core entities directly from the UI.</p>
+
+      <div class="field">
+        <label>Protocol Name</label>
+        <input id="protocolName" type="text" style="width:220px" placeholder="Bridge Construction">
+        <label>Description</label>
+        <input id="protocolDesc" type="text" style="width:260px" placeholder="Reusable protocol">
+        <button class="btn btn-primary" onclick="createProtocol()">Create Protocol</button>
+      </div>
+
+      <div class="field">
+        <label>Resource Name</label>
+        <input id="resourceName" type="text" style="width:200px" placeholder="Engineer">
+        <label>Kind</label>
+        <input id="resourceKind" type="text" style="width:120px" placeholder="ASSET">
+        <label>Unit</label>
+        <input id="resourceUnit" type="text" style="width:120px" placeholder="person-day">
+        <button class="btn btn-primary" onclick="createResourceType()">Create Resource Type</button>
+      </div>
+
+      <div class="field">
+        <label>Plan Name</label>
+        <input id="planName" type="text" style="width:220px" placeholder="Q2 Operations Plan">
+        <label>Protocol ID (optional)</label>
+        <input id="planProtocolId" type="number" min="1" style="width:140px" placeholder="1">
+        <button class="btn btn-primary" onclick="createPlan()">Create Plan</button>
+      </div>
+
+      <pre id="opsOutput">Create actions will show response here...</pre>
+    </div>
   </main>
   <script>
+    const API_BASE = "https://project4-backened.onrender.com";
+
     async function load() {
       const rows = document.getElementById("rows");
       const alertEl = document.getElementById("alert");
       let hasNegative = false;
 
       try {
-        const accounts = await fetch("https://project4-backened.onrender.com/api/accounts").then(r => r.json());
+        const accounts = await fetch(`${API_BASE}/api/accounts`).then(r => r.json());
         rows.innerHTML = "";
+        const memoRows = document.getElementById("memoRows");
+        memoRows.innerHTML = "";
+
         accounts.filter(a => a.kind === "POOL").forEach(a => {
           const balance = Number(a.balance ?? 0);
           if (balance < 0) hasNegative = true;
@@ -51,15 +103,82 @@
           tr.innerHTML = `
             <td>${a.name}</td>
             <td><span class="badge badge-pool">${a.kind}</span></td>
+            <td>${a.id}</td>
             <td class="${balance < 0 ? "negative" : "positive"}">${balance.toFixed(2)}</td>`;
           rows.appendChild(tr);
         });
+
+        accounts.filter(a => a.kind === "ALERT_MEMO").forEach(a => {
+          const balance = Number(a.balance ?? 0);
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${a.name}</td>
+            <td>${a.id}</td>
+            <td class="positive">${balance.toFixed(2)}</td>`;
+          memoRows.appendChild(tr);
+        });
+        if (!memoRows.childElementCount) {
+          memoRows.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">No ALERT_MEMO accounts (create a resource type to auto-create pool + memo + rule).</td></tr>`;
+        }
       } catch {
         rows.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">Could not reach backend.</td></tr>`;
       }
 
       alertEl.style.display = hasNegative ? "block" : "none";
     }
+
+    async function postJson(url, body) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed (${res.status})`);
+      }
+      return data;
+    }
+
+    async function createProtocol() {
+      const output = document.getElementById("opsOutput");
+      try {
+        const name = document.getElementById("protocolName").value.trim();
+        const description = document.getElementById("protocolDesc").value.trim();
+        const data = await postJson(`${API_BASE}/api/protocols`, { name, description });
+        output.textContent = `Protocol created:\n${JSON.stringify(data, null, 2)}`;
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function createResourceType() {
+      const output = document.getElementById("opsOutput");
+      try {
+        const name = document.getElementById("resourceName").value.trim();
+        const kind = document.getElementById("resourceKind").value.trim().toUpperCase();
+        const unit = document.getElementById("resourceUnit").value.trim();
+        const data = await postJson(`${API_BASE}/api/resource-types`, { name, kind, unit });
+        output.textContent = `Resource type created:\n${JSON.stringify(data, null, 2)}`;
+        load();
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function createPlan() {
+      const output = document.getElementById("opsOutput");
+      try {
+        const name = document.getElementById("planName").value.trim();
+        const protocolIdRaw = document.getElementById("planProtocolId").value.trim();
+        const protocolId = protocolIdRaw ? Number(protocolIdRaw) : null;
+        const data = await postJson(`${API_BASE}/api/plans`, { name, protocolId, parentPlanId: null });
+        output.textContent = `Plan created:\n${JSON.stringify(data, null, 2)}`;
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
     load();
     setInterval(load, 10000);
   </script>
