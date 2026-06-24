@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ledger — RPL</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page">
+  <header class="topbar">
+    <a class="brand" href="index.html">RPL</a>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="plan-view.html">Plans</a>
+      <a href="action-detail.html">Actions</a>
+      <a href="ledger-view.html" class="active">Ledger</a>
+      <a href="report.html">Report</a>
+    </nav>
+  </header>
+  <main class="main">
+    <div class="card">
+      <p class="card-title">Ledger Entries</p>
+      <p class="card-sub">Sample data often uses memo account ID <strong>9</strong> (“Over-Consumption Alerts”). After F8 fires you’ll see <strong>positive</strong> amounts here (deficit size).</p>
+      <div class="field">
+        <label for="accountId">Account ID</label>
+        <input id="accountId" type="number" value="9" min="1">
+        <button class="btn btn-primary" onclick="loadEntries()">Load</button>
+      </div>
+      <p class="card-sub">Quick open memo accounts from the API:</p>
+      <div id="memoShortcuts" class="field" style="flex-wrap:wrap;gap:8px"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Amount</th>
+            <th>Charged At</th>
+            <th>Booked At</th>
+          </tr>
+        </thead>
+        <tbody id="entries"></tbody>
+      </table>
+    </div>
+  </main>
+  <script>
+    const API_BASE = "https://project4-backened.onrender.com";
+
+    async function loadMemoShortcuts() {
+      const wrap = document.getElementById("memoShortcuts");
+      wrap.innerHTML = "";
+      try {
+        const accounts = await fetch(`${API_BASE}/api/accounts`).then(r => r.json());
+        accounts.filter(a => a.kind === "ALERT_MEMO").forEach(a => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "btn btn-ghost";
+          b.textContent = `${a.name} (id ${a.id})`;
+          b.onclick = () => {
+            document.getElementById("accountId").value = a.id;
+            loadEntries();
+          };
+          wrap.appendChild(b);
+        });
+        if (!wrap.childElementCount) {
+          wrap.innerHTML = `<span style="color:var(--muted)">No ALERT_MEMO accounts returned.</span>`;
+        }
+      } catch {
+        wrap.innerHTML = `<span style="color:var(--muted)">Could not load accounts.</span>`;
+      }
+    }
+
+    async function loadEntries() {
+      const id = document.getElementById("accountId").value;
+      const tbody = document.getElementById("entries");
+      tbody.innerHTML = "";
+      try {
+        const entries = await fetch(`${API_BASE}/api/accounts/${id}/entries`).then(r => r.json());
+        if (!entries.length) {
+          tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">No entries found.</td></tr>`;
+          return;
+        }
+        entries.forEach(e => {
+          const amount = Number(e.amount);
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td class="${amount < 0 ? "negative" : "positive"}">${amount.toFixed(2)}</td>
+            <td>${e.chargedAt ?? "—"}</td>
+            <td>${e.bookedAt ?? "—"}</td>`;
+          tbody.appendChild(row);
+        });
+      } catch {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">Could not reach backend.</td></tr>`;
+      }
+    }
+
+    loadMemoShortcuts();
+  </script>
+</body>
+</html>

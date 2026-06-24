@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report — RPL</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page">
+  <header class="topbar">
+    <a class="brand" href="index.html">RPL</a>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="plan-view.html">Plans</a>
+      <a href="action-detail.html">Actions</a>
+      <a href="ledger-view.html">Ledger</a>
+      <a href="report.html" class="active">Report</a>
+    </nav>
+  </header>
+  <main class="main">
+    <div class="card">
+      <p class="card-title">Plan Report</p>
+      <p class="card-sub">Depth-first traversal summary for a plan.</p>
+      <div class="field">
+        <label for="planId">Plan ID</label>
+        <input id="planId" type="number" value="1" min="1">
+        <button class="btn btn-primary" onclick="loadReport()">Generate</button>
+      </div>
+      <pre id="report">Report output will appear here.</pre>
+    </div>
+  </main>
+  <script>
+    async function loadReport() {
+      const planId = document.getElementById("planId").value;
+      const pre = document.getElementById("report");
+      pre.textContent = "Loading...";
+      try {
+        const report = await fetch(`https://project4-backened.onrender.com/api/plans/${planId}/report`).then(r => r.json());
+        pre.textContent = report.join("\n");
+      } catch (e) {
+        pre.textContent = "Error: " + e.message;
+      }
+    }
+  </script>
+</body>
+</html>
