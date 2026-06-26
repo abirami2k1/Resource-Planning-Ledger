@@ -1,6 +1,8 @@
 package com.rpl.domain;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -20,8 +22,10 @@ public class ImplementedAction {
     private String actualParty;
     private String actualLocation;
 
-    public Long getId() { return id; }
+    @Enumerated(EnumType.STRING)
+    private ActionStatus status = ActionStatus.IN_PROGRESS;
 
+    public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public ProposedAction getProposedAction() { return proposedAction; }
     public void setProposedAction(ProposedAction proposedAction) { this.proposedAction = proposedAction; }
@@ -31,4 +35,6 @@ public class ImplementedAction {
     public void setActualParty(String actualParty) { this.actualParty = actualParty; }
     public String getActualLocation() { return actualLocation; }
     public void setActualLocation(String actualLocation) { this.actualLocation = actualLocation; }
+    public ActionStatus getStatus() { return status; }
+    public void setStatus(ActionStatus status) { this.status = status; }
 }

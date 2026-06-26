@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,6 +22,12 @@ public class Plan implements PlanNode {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+
+    /** Protocol this plan was instantiated from (optional). */
+    @ManyToOne
+    private Protocol sourceProtocol;
+
+    private Instant targetStartDate;
 
     @ManyToOne
     @JsonIgnore
@@ -32,34 +39,17 @@ public class Plan implements PlanNode {
     @OneToMany(mappedBy = "parentPlan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Plan> subPlans = new ArrayList<>();
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Plan getParentPlan() {
-        return parentPlan;
-    }
-
-    public void setParentPlan(Plan parentPlan) {
-        this.parentPlan = parentPlan;
-    }
-
-    /** Leaf actions attached directly to this plan. */
-    public List<ProposedAction> getActions() {
-        return actions;
-    }
-
-    public List<Plan> getSubPlans() {
-        return subPlans;
-    }
+    public Long getId() { return id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public Protocol getSourceProtocol() { return sourceProtocol; }
+    public void setSourceProtocol(Protocol sourceProtocol) { this.sourceProtocol = sourceProtocol; }
+    public Instant getTargetStartDate() { return targetStartDate; }
+    public void setTargetStartDate(Instant targetStartDate) { this.targetStartDate = targetStartDate; }
+    public Plan getParentPlan() { return parentPlan; }
+    public void setParentPlan(Plan parentPlan) { this.parentPlan = parentPlan; }
+    public List<ProposedAction> getActions() { return actions; }
+    public List<Plan> getSubPlans() { return subPlans; }
 
     /** Merged composite children (leaves first, then nested plans). */
     public List<PlanNode> getChildren() {
@@ -105,32 +95,29 @@ public class Plan implements PlanNode {
         return sum;
     }
 
+    /**
+     * Visitor pattern: call visitComposite on this node, then recurse into children.
+     * This ensures all visitors see every node in the tree.
+     */
     @Override
     public void accept(PlanNodeVisitor v) {
-        v.visit(this);
+        v.visitComposite(this);
+        for (PlanNode child : getChildren()) {
+            child.accept(v);
+        }
     }
 
     private static ActionStatus aggregateLeafStatuses(List<ActionStatus> leaves) {
-        if (leaves.isEmpty()) {
-            return ActionStatus.PROPOSED;
-        }
+        if (leaves.isEmpty()) return ActionStatus.PROPOSED;
         int n = leaves.size();
         long completed = leaves.stream().filter(s -> s == ActionStatus.COMPLETED).count();
-        long abandoned = leaves.stream().filter(s -> s == ActionStatus.ABANDONED).count();
+        long abandoned  = leaves.stream().filter(s -> s == ActionStatus.ABANDONED).count();
         boolean hasInProgress = leaves.stream().anyMatch(s -> s == ActionStatus.IN_PROGRESS);
-        boolean hasSuspended = leaves.stream().anyMatch(s -> s == ActionStatus.SUSPENDED);
-        if (completed == n) {
-            return ActionStatus.COMPLETED;
-        }
-        if (hasInProgress || completed > 0) {
-            return ActionStatus.IN_PROGRESS;
-        }
-        if (hasSuspended) {
-            return ActionStatus.SUSPENDED;
-        }
-        if (abandoned == n) {
-            return ActionStatus.ABANDONED;
-        }
+        boolean hasSuspended  = leaves.stream().anyMatch(s -> s == ActionStatus.SUSPENDED);
+        if (completed == n) return ActionStatus.COMPLETED;
+        if (hasInProgress || completed > 0) return ActionStatus.IN_PROGRESS;
+        if (hasSuspended) return ActionStatus.SUSPENDED;
+        if (abandoned == n) return ActionStatus.ABANDONED;
         return ActionStatus.PROPOSED;
     }
 }

@@ -31,6 +31,10 @@ public class ProposedAction implements PlanNode {
 
     private Instant timeRef;
 
+    /** Optional protocol this action was generated from. */
+    @ManyToOne
+    private Protocol protocol;
+
     @ManyToOne
     @JsonIgnore
     private Plan plan;
@@ -38,65 +42,23 @@ public class ProposedAction implements PlanNode {
     @OneToMany(mappedBy = "action", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ResourceAllocation> allocations = new ArrayList<>();
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getParty() {
-        return party;
-    }
-
-    public void setParty(String party) {
-        this.party = party;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
-    public ActionStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ActionStatus status) {
-        this.status = status;
-    }
-
-    public Instant getTimeRef() {
-        return timeRef;
-    }
-
-    public void setTimeRef(Instant timeRef) {
-        this.timeRef = timeRef;
-    }
-
-    public Plan getPlan() {
-        return plan;
-    }
-
-    public void setPlan(Plan plan) {
-        this.plan = plan;
-    }
-
-    public List<ResourceAllocation> getAllocations() {
-        return allocations;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getParty() { return party; }
+    public void setParty(String party) { this.party = party; }
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+    public ActionStatus getStatus() { return status; }
+    public void setStatus(ActionStatus status) { this.status = status; }
+    public Instant getTimeRef() { return timeRef; }
+    public void setTimeRef(Instant timeRef) { this.timeRef = timeRef; }
+    public Protocol getProtocol() { return protocol; }
+    public void setProtocol(Protocol protocol) { this.protocol = protocol; }
+    public Plan getPlan() { return plan; }
+    public void setPlan(Plan plan) { this.plan = plan; }
+    public List<ResourceAllocation> getAllocations() { return allocations; }
 
     @Override
     public BigDecimal getTotalAllocatedQuantity(ResourceType rt) {
@@ -106,8 +68,9 @@ public class ProposedAction implements PlanNode {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    /** Visitor pattern leaf: delegates directly to visitLeaf. */
     @Override
     public void accept(PlanNodeVisitor v) {
-        v.visit(this);
+        v.visitLeaf(this);
     }
 }

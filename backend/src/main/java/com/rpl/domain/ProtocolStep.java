@@ -14,10 +14,15 @@ public class ProtocolStep {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
 
     @ManyToOne
     private Protocol protocol;
+
+    /** Optional sub-protocol this step references (knowledge-level template). */
+    @ManyToOne
+    private Protocol subProtocol;
 
     @ElementCollection
     private List<String> dependsOn = new ArrayList<>();
@@ -27,6 +32,8 @@ public class ProtocolStep {
     public void setName(String name) { this.name = name; }
     public Protocol getProtocol() { return protocol; }
     public void setProtocol(Protocol protocol) { this.protocol = protocol; }
+    public Protocol getSubProtocol() { return subProtocol; }
+    public void setSubProtocol(Protocol subProtocol) { this.subProtocol = subProtocol; }
     public List<String> getDependsOn() { return dependsOn; }
     public void setDependsOn(List<String> dependsOn) { this.dependsOn = dependsOn; }
 }

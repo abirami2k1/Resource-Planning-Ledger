@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Actions — RPL</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="help.js"></script>
 </head>
 <body class="page">
   <header class="topbar">
@@ -20,12 +22,15 @@
   </header>
   <main class="main">
     <div class="card">
-      <p class="card-title">Action Detail</p>
-      <p class="card-sub">Select an action and trigger a lifecycle transition.</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="card-title" style="margin:0">Action Lifecycle</p>
+        <button class="help-btn" onclick="showHelp(event, this, 'actions')">? Know more</button>
+      </div>
       <div class="field">
         <label for="actionId">Action ID</label>
         <input id="actionId" type="number" value="104" min="1">
       </div>
+      <p class="card-sub" style="margin-bottom:8px">Week 1 transitions</p>
       <div class="actions-row">
         <button class="btn btn-primary" onclick="transition('implement')">Implement</button>
         <button class="btn btn-ghost"   onclick="suspendAction()">Suspend</button>
@@ -33,23 +38,27 @@
         <button class="btn btn-ghost"   onclick="transition('complete')">Complete</button>
         <button class="btn btn-danger"  onclick="transition('abandon')">Abandon</button>
       </div>
+      <p class="card-sub" style="margin-bottom:8px">Week 2 transitions</p>
+      <div class="actions-row">
+        <button class="btn btn-primary" onclick="transition('submitforapproval')">Submit for Approval</button>
+        <button class="btn btn-ghost"   onclick="transition('approve')">Approve</button>
+        <button class="btn btn-ghost"   onclick="transition('reject')">Reject</button>
+        <button class="btn btn-ghost"   onclick="transition('reopen')">Reopen</button>
+      </div>
       <pre id="output">Run a transition to see the response.</pre>
     </div>
     <div class="card">
-      <p class="card-title">Add consumable allocation (test F8)</p>
-      <p class="card-sub">Attach a <strong>GENERAL</strong> consumable line with a large <strong>quantity</strong> (e.g. resource type <strong>3</strong> = Concrete in sample DB). Then <strong>Implement</strong> → <strong>Complete</strong>. On complete, the pool withdraws that quantity; if it goes negative, open <a href="ledger-view.html">Ledger</a> → memo account (see Dashboard) for alert entries.</p>
+      <p class="card-title">Add Resource Allocation</p>
       <div class="field">
         <label for="resTypeId">Resource type ID</label>
         <input id="resTypeId" type="number" value="3" min="1" style="width:100px">
         <label for="allocQty">Quantity</label>
         <input id="allocQty" type="number" value="500" min="0.01" step="any" style="width:120px">
-        <button class="btn btn-primary" onclick="addAllocation()">POST allocation</button>
+        <button class="btn btn-primary" onclick="addAllocation()">Add Allocation</button>
       </div>
     </div>
   </main>
   <script>
-    const API_BASE = "https://project4-backened.onrender.com";
-
     async function transition(eventName) {
       const id = document.getElementById("actionId").value;
       const out = document.getElementById("output");
@@ -57,13 +66,9 @@
       try {
         const res = await fetch(`${API_BASE}/api/actions/${id}/${eventName}`, { method: "POST" });
         const text = await res.text();
-        out.textContent = text;
-        try {
-          out.textContent = JSON.stringify(JSON.parse(text), null, 2);
-        } catch { /* leave raw */ }
-      } catch (e) {
-        out.textContent = "Error: " + e.message;
-      }
+        try { out.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+        catch { out.textContent = text; }
+      } catch (e) { out.textContent = "Error: " + e.message; }
     }
 
     async function suspendAction() {
@@ -71,48 +76,23 @@
       const out = document.getElementById("output");
       out.textContent = "Loading...";
       try {
-        const res = await fetch(`${API_BASE}/api/actions/${id}/suspend`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason: "Paused from UI test" })
-        });
+        const res = await fetch(`${API_BASE}/api/actions/${id}/suspend`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "Paused from UI" }) });
         const text = await res.text();
-        try {
-          out.textContent = JSON.stringify(JSON.parse(text), null, 2);
-        } catch {
-          out.textContent = text;
-        }
-      } catch (e) {
-        out.textContent = "Error: " + e.message;
-      }
+        try { out.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+        catch { out.textContent = text; }
+      } catch (e) { out.textContent = "Error: " + e.message; }
     }
 
     async function addAllocation() {
       const id = document.getElementById("actionId").value;
-      const resourceTypeId = Number(document.getElementById("resTypeId").value);
-      const quantity = Number(document.getElementById("allocQty").value);
       const out = document.getElementById("output");
       out.textContent = "Loading...";
       try {
-        const res = await fetch(`${API_BASE}/api/actions/${id}/allocations`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            resourceTypeId,
-            quantity,
-            kind: "GENERAL",
-            assetId: null
-          })
-        });
+        const res = await fetch(`${API_BASE}/api/actions/${id}/allocations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resourceTypeId: Number(document.getElementById("resTypeId").value), quantity: Number(document.getElementById("allocQty").value), kind: "GENERAL", assetId: null }) });
         const text = await res.text();
-        try {
-          out.textContent = JSON.stringify(JSON.parse(text), null, 2);
-        } catch {
-          out.textContent = text;
-        }
-      } catch (e) {
-        out.textContent = "Error: " + e.message;
-      }
+        try { out.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+        catch { out.textContent = text; }
+      } catch (e) { out.textContent = "Error: " + e.message; }
     }
   </script>
 </body>

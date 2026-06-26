@@ -23,9 +23,14 @@ public class ResourceAllocation {
     private ResourceType resourceType;
 
     private double quantity;
+
     @Enumerated(EnumType.STRING)
     private AllocationKind kind;
+
     private String assetId;
+
+    /** Duration in hours — used by AssetLedgerEntryGenerator for time-based entries. */
+    private Double timePeriodHours;
 
     public Long getId() { return id; }
     public ProposedAction getAction() { return action; }
@@ -38,4 +43,6 @@ public class ResourceAllocation {
     public void setKind(AllocationKind kind) { this.kind = kind; }
     public String getAssetId() { return assetId; }
     public void setAssetId(String assetId) { this.assetId = assetId; }
+    public Double getTimePeriodHours() { return timePeriodHours; }
+    public void setTimePeriodHours(Double timePeriodHours) { this.timePeriodHours = timePeriodHours; }
 }

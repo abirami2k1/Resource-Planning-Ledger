@@ -5,6 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — RPL</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="help.js"></script>
+  <style>
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin: 20px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-label:first-of-type { margin-top: 0; }
+    .existing-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .existing-chip {
+      font-size: 12px;
+      background: #f5f5f5;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 9px;
+      color: var(--text);
+    }
+    .step-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .step-row input { width: 200px; }
+    .remove-step {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 4px;
+    }
+    .remove-step:hover { color: var(--danger); }
+  </style>
 </head>
 <body class="page">
   <header class="topbar">
@@ -19,168 +65,306 @@
     </nav>
   </header>
   <main class="main">
+
+    <!-- Pool balances -->
     <div class="card">
-      <p class="card-title">Pool Accounts</p>
-      <p class="card-sub">Completing an action withdraws from the matching pool. If balance drops below zero, <strong>F8</strong> posts an alert entry on the memo account (see below).</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="card-title" style="margin:0">Pool Accounts</p>
+        <button class="help-btn" onclick="showHelp(event, this, 'dashboard')">? Know more</button>
+      </div>
       <div id="alert" class="alert">One or more pool balances are below zero.</div>
       <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Kind</th>
-            <th>ID</th>
-            <th>Balance</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
+        <thead><tr><th>Name</th><th>Kind</th><th>ID</th><th>Balance</th></tr></thead>
+        <tbody id="poolRows"></tbody>
       </table>
     </div>
+
+    <!-- Alert memo accounts -->
     <div class="card">
-      <p class="card-title">Alert memo accounts </p>
-      <p class="card-sub">Open <a href="ledger-view.html">Ledger</a>, enter this account ID, and click <strong>Load</strong> to see over-consumption alerts.</p>
+      <p class="card-title">Alert Memo Accounts</p>
       <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>ID</th>
-            <th>Balance</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Name</th><th>ID</th><th>Balance</th></tr></thead>
         <tbody id="memoRows"></tbody>
       </table>
     </div>
+
+    <!-- Quick Create -->
     <div class="card">
       <p class="card-title">Quick Create</p>
-      <p class="card-sub">Add core entities directly from the UI.</p>
 
+      <!-- ── Resource Type ── -->
+      <p class="section-label">Resource Type</p>
+      <div id="resourceTypeList" class="existing-list">
+        <span style="color:var(--muted);font-size:12px">Loading...</span>
+      </div>
+      <div class="field" style="flex-wrap:wrap">
+        <label>Name</label>
+        <input id="resourceName" type="text" style="width:180px" placeholder="Concrete">
+        <label>Kind</label>
+        <select id="resourceKind" style="height:32px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:13px">
+          <option value="CONSUMABLE">CONSUMABLE</option>
+          <option value="ASSET">ASSET</option>
+        </select>
+        <label>Unit</label>
+        <input id="resourceUnit" type="text" style="width:100px" placeholder="m³">
+        <label>Unit Cost</label>
+        <input id="resourceUnitCost" type="number" min="0" step="any" style="width:90px" placeholder="0.00">
+        <button class="btn btn-primary" onclick="createResourceType()">Create</button>
+      </div>
+
+      <!-- ── Protocol ── -->
+      <p class="section-label">Protocol</p>
+      <div id="protocolList" class="existing-list">
+        <span style="color:var(--muted);font-size:12px">Loading...</span>
+      </div>
       <div class="field">
-        <label>Protocol Name</label>
+        <label>Name</label>
         <input id="protocolName" type="text" style="width:220px" placeholder="Bridge Construction">
         <label>Description</label>
-        <input id="protocolDesc" type="text" style="width:260px" placeholder="Reusable protocol">
-        <button class="btn btn-primary" onclick="createProtocol()">Create Protocol</button>
+        <input id="protocolDesc" type="text" style="width:240px" placeholder="Reusable template">
+        <button class="btn btn-primary" onclick="createProtocol()">Create</button>
       </div>
 
-      <div class="field">
-        <label>Resource Name</label>
-        <input id="resourceName" type="text" style="width:200px" placeholder="Engineer">
-        <label>Kind</label>
-        <input id="resourceKind" type="text" style="width:120px" placeholder="ASSET">
-        <label>Unit</label>
-        <input id="resourceUnit" type="text" style="width:120px" placeholder="person-day">
-        <button class="btn btn-primary" onclick="createResourceType()">Create Resource Type</button>
+      <!-- Add steps to an existing protocol -->
+      <div id="addStepsSection" style="display:none;margin-top:4px">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px">
+          Protocol <strong id="createdProtocolLabel"></strong> created. Add steps (optional):
+        </p>
+        <div id="stepsContainer"></div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn btn-ghost" onclick="addStepRow()">+ Add step</button>
+          <button class="btn btn-primary" onclick="saveSteps()">Save steps</button>
+          <button class="btn btn-ghost" onclick="skipSteps()">Skip</button>
+        </div>
       </div>
 
-      <div class="field">
-        <label>Plan Name</label>
-        <input id="planName" type="text" style="width:220px" placeholder="Q2 Operations Plan">
-        <label>Protocol ID (optional)</label>
-        <input id="planProtocolId" type="number" min="1" style="width:140px" placeholder="1">
-        <button class="btn btn-primary" onclick="createPlan()">Create Plan</button>
+      <!-- ── Plan ── -->
+      <p class="section-label">Plan</p>
+      <div id="planList" class="existing-list">
+        <span style="color:var(--muted);font-size:12px">Loading...</span>
+      </div>
+      <div class="field" style="flex-wrap:wrap">
+        <label>Name</label>
+        <input id="planName" type="text" style="width:220px" placeholder="Q2 Operations">
+        <label>From protocol</label>
+        <select id="planProtocolId" style="height:32px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:13px;width:200px">
+          <option value="">— None (blank plan) —</option>
+        </select>
+        <label>Sub-plan of</label>
+        <select id="planParentId" style="height:32px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:13px;width:180px">
+          <option value="">— Top-level —</option>
+        </select>
+        <button class="btn btn-primary" onclick="createPlan()">Create</button>
       </div>
 
-      <pre id="opsOutput">Create actions will show response here...</pre>
+      <pre id="opsOutput" style="margin-top:8px">Responses appear here...</pre>
     </div>
   </main>
-  <script>
-    const API_BASE = "https://project4-backened.onrender.com";
 
-    async function load() {
-      const rows = document.getElementById("rows");
+  <script>
+    let currentProtocolId = null;
+
+    // ── Accounts ────────────────────────────────────────────────────────────
+    async function loadAccounts() {
       const alertEl = document.getElementById("alert");
       let hasNegative = false;
-
       try {
         const accounts = await fetch(`${API_BASE}/api/accounts`).then(r => r.json());
-        rows.innerHTML = "";
+        const poolRows = document.getElementById("poolRows");
         const memoRows = document.getElementById("memoRows");
+        poolRows.innerHTML = "";
         memoRows.innerHTML = "";
 
         accounts.filter(a => a.kind === "POOL").forEach(a => {
           const balance = Number(a.balance ?? 0);
           if (balance < 0) hasNegative = true;
           const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${a.name}</td>
-            <td><span class="badge badge-pool">${a.kind}</span></td>
-            <td>${a.id}</td>
-            <td class="${balance < 0 ? "negative" : "positive"}">${balance.toFixed(2)}</td>`;
-          rows.appendChild(tr);
+          tr.innerHTML = `<td>${a.name}</td><td><span class="badge badge-pool">${a.kind}</span></td><td>${a.id}</td><td class="${balance < 0 ? "negative" : "positive"}">${balance.toFixed(2)}</td>`;
+          poolRows.appendChild(tr);
         });
-
         accounts.filter(a => a.kind === "ALERT_MEMO").forEach(a => {
           const balance = Number(a.balance ?? 0);
           const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${a.name}</td>
-            <td>${a.id}</td>
-            <td class="positive">${balance.toFixed(2)}</td>`;
+          tr.innerHTML = `<td>${a.name}</td><td>${a.id}</td><td class="positive">${balance.toFixed(2)}</td>`;
           memoRows.appendChild(tr);
         });
         if (!memoRows.childElementCount) {
-          memoRows.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">No ALERT_MEMO accounts (create a resource type to auto-create pool + memo + rule).</td></tr>`;
+          memoRows.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">No alert memo accounts yet — create a resource type to generate one.</td></tr>`;
         }
       } catch {
-        rows.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">Could not reach backend.</td></tr>`;
+        document.getElementById("poolRows").innerHTML = `<tr><td colspan="4" style="color:var(--muted)">Could not reach backend.</td></tr>`;
       }
-
       alertEl.style.display = hasNegative ? "block" : "none";
     }
 
-    async function postJson(url, body) {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || `Request failed (${res.status})`);
-      }
-      return data;
-    }
-
-    async function createProtocol() {
-      const output = document.getElementById("opsOutput");
+    // ── Resource Types ───────────────────────────────────────────────────────
+    async function loadResourceTypes() {
+      const wrap = document.getElementById("resourceTypeList");
       try {
-        const name = document.getElementById("protocolName").value.trim();
-        const description = document.getElementById("protocolDesc").value.trim();
-        const data = await postJson(`${API_BASE}/api/protocols`, { name, description });
-        output.textContent = `Protocol created:\n${JSON.stringify(data, null, 2)}`;
-      } catch (e) {
-        output.textContent = `Error: ${e.message}`;
+        const list = await fetch(`${API_BASE}/api/resource-types`).then(r => r.json());
+        if (!list.length) {
+          wrap.innerHTML = `<span style="color:var(--muted);font-size:12px">None yet.</span>`;
+          return;
+        }
+        wrap.innerHTML = list.map(rt =>
+          `<span class="existing-chip">ID ${rt.id} · <strong>${rt.name}</strong> · ${rt.kind} · ${rt.unit || '—'} · cost: ${rt.unitCost ?? 0}</span>`
+        ).join("");
+      } catch {
+        wrap.innerHTML = `<span style="color:var(--muted);font-size:12px">Could not load.</span>`;
       }
     }
 
     async function createResourceType() {
-      const output = document.getElementById("opsOutput");
+      const out = document.getElementById("opsOutput");
+      const name = document.getElementById("resourceName").value.trim();
+      const kind = document.getElementById("resourceKind").value;
+      const unit = document.getElementById("resourceUnit").value.trim();
+      const unitCostRaw = document.getElementById("resourceUnitCost").value.trim();
+      const unitCost = unitCostRaw ? Number(unitCostRaw) : 0.0;
+      if (!name) { out.textContent = "Error: Name is required."; return; }
       try {
-        const name = document.getElementById("resourceName").value.trim();
-        const kind = document.getElementById("resourceKind").value.trim().toUpperCase();
-        const unit = document.getElementById("resourceUnit").value.trim();
-        const data = await postJson(`${API_BASE}/api/resource-types`, { name, kind, unit });
-        output.textContent = `Resource type created:\n${JSON.stringify(data, null, 2)}`;
-        load();
-      } catch (e) {
-        output.textContent = `Error: ${e.message}`;
+        const data = await postJson(`${API_BASE}/api/resource-types`, { name, kind, unit, unitCost });
+        out.textContent = `Resource type created:\n${JSON.stringify(data, null, 2)}`;
+        loadResourceTypes();
+        loadAccounts();
+        document.getElementById("resourceName").value = "";
+        document.getElementById("resourceUnit").value = "";
+        document.getElementById("resourceUnitCost").value = "";
+      } catch (e) { out.textContent = `Error: ${e.message}`; }
+    }
+
+    // ── Protocols ────────────────────────────────────────────────────────────
+    async function loadProtocols() {
+      const wrap = document.getElementById("protocolList");
+      const sel = document.getElementById("planProtocolId");
+      try {
+        const list = await fetch(`${API_BASE}/api/protocols`).then(r => r.json());
+        if (!list.length) {
+          wrap.innerHTML = `<span style="color:var(--muted);font-size:12px">None yet.</span>`;
+        } else {
+          wrap.innerHTML = list.map(p =>
+            `<span class="existing-chip">ID ${p.id} · <strong>${p.name}</strong> · ${p.steps?.length ?? 0} step(s)</span>`
+          ).join("");
+        }
+        // Populate protocol dropdown for plan creation
+        sel.innerHTML = `<option value="">— None (blank plan) —</option>`;
+        list.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p.id;
+          opt.textContent = `${p.name} (${p.steps?.length ?? 0} steps)`;
+          sel.appendChild(opt);
+        });
+      } catch {
+        wrap.innerHTML = `<span style="color:var(--muted);font-size:12px">Could not load.</span>`;
+      }
+    }
+
+    async function createProtocol() {
+      const out = document.getElementById("opsOutput");
+      const name = document.getElementById("protocolName").value.trim();
+      const description = document.getElementById("protocolDesc").value.trim();
+      if (!name) { out.textContent = "Error: Name is required."; return; }
+      try {
+        const data = await postJson(`${API_BASE}/api/protocols`, { name, description });
+        currentProtocolId = data.id;
+        out.textContent = `Protocol created (ID ${data.id}):\n${JSON.stringify(data, null, 2)}`;
+        document.getElementById("protocolName").value = "";
+        document.getElementById("protocolDesc").value = "";
+        document.getElementById("createdProtocolLabel").textContent = `"${data.name}" (ID ${data.id})`;
+        document.getElementById("stepsContainer").innerHTML = "";
+        document.getElementById("addStepsSection").style.display = "block";
+        addStepRow();
+        loadProtocols();
+      } catch (e) { out.textContent = `Error: ${e.message}`; }
+    }
+
+    function addStepRow() {
+      const container = document.getElementById("stepsContainer");
+      const row = document.createElement("div");
+      row.className = "step-row";
+      row.innerHTML = `
+        <input type="text" placeholder="Step name (e.g. Site Survey)" style="width:260px">
+        <button class="remove-step" onclick="this.parentElement.remove()">×</button>`;
+      container.appendChild(row);
+    }
+
+    async function saveSteps() {
+      const out = document.getElementById("opsOutput");
+      const rows = document.querySelectorAll("#stepsContainer .step-row input");
+      const names = [...rows].map(i => i.value.trim()).filter(Boolean);
+      if (!names.length) { skipSteps(); return; }
+      try {
+        for (const name of names) {
+          await postJson(`${API_BASE}/api/protocols/${currentProtocolId}/steps`, { name });
+        }
+        out.textContent = `Saved ${names.length} step(s) to protocol ${currentProtocolId}.`;
+        skipSteps();
+        loadProtocols();
+      } catch (e) { out.textContent = `Error saving steps: ${e.message}`; }
+    }
+
+    function skipSteps() {
+      document.getElementById("addStepsSection").style.display = "none";
+      document.getElementById("stepsContainer").innerHTML = "";
+      currentProtocolId = null;
+    }
+
+    // ── Plans ────────────────────────────────────────────────────────────────
+    async function loadPlans() {
+      const wrap = document.getElementById("planList");
+      const sel = document.getElementById("planParentId");
+      try {
+        const list = await fetch(`${API_BASE}/api/plans`).then(r => r.json());
+        if (!list.length) {
+          wrap.innerHTML = `<span style="color:var(--muted);font-size:12px">None yet.</span>`;
+        } else {
+          wrap.innerHTML = list.map(p =>
+            `<span class="existing-chip">ID ${p.id} · <strong>${p.name}</strong></span>`
+          ).join("");
+        }
+        sel.innerHTML = `<option value="">— Top-level —</option>`;
+        list.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p.id;
+          opt.textContent = `${p.name} (ID ${p.id})`;
+          sel.appendChild(opt);
+        });
+      } catch {
+        wrap.innerHTML = `<span style="color:var(--muted);font-size:12px">Could not load.</span>`;
       }
     }
 
     async function createPlan() {
-      const output = document.getElementById("opsOutput");
+      const out = document.getElementById("opsOutput");
+      const name = document.getElementById("planName").value.trim();
+      const protocolIdRaw = document.getElementById("planProtocolId").value;
+      const parentIdRaw = document.getElementById("planParentId").value;
+      if (!name) { out.textContent = "Error: Name is required."; return; }
+      const protocolId = protocolIdRaw ? Number(protocolIdRaw) : null;
+      const parentPlanId = parentIdRaw ? Number(parentIdRaw) : null;
       try {
-        const name = document.getElementById("planName").value.trim();
-        const protocolIdRaw = document.getElementById("planProtocolId").value.trim();
-        const protocolId = protocolIdRaw ? Number(protocolIdRaw) : null;
-        const data = await postJson(`${API_BASE}/api/plans`, { name, protocolId, parentPlanId: null });
-        output.textContent = `Plan created:\n${JSON.stringify(data, null, 2)}`;
-      } catch (e) {
-        output.textContent = `Error: ${e.message}`;
-      }
+        const data = await postJson(`${API_BASE}/api/plans`, { name, protocolId, parentPlanId });
+        out.textContent = `Plan created:\n${JSON.stringify(data, null, 2)}`;
+        document.getElementById("planName").value = "";
+        loadPlans();
+      } catch (e) { out.textContent = `Error: ${e.message}`; }
     }
 
-    load();
-    setInterval(load, 10000);
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    async function postJson(url, body) {
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.message || `Request failed (${res.status})`);
+      return data;
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    async function init() {
+      await Promise.all([loadAccounts(), loadResourceTypes(), loadProtocols(), loadPlans()]);
+    }
+
+    init();
+    setInterval(loadAccounts, 10000);
   </script>
 </body>
 </html>

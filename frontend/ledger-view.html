@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ledger — RPL</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="help.js"></script>
 </head>
 <body class="page">
   <header class="topbar">
@@ -20,49 +22,73 @@
   </header>
   <main class="main">
     <div class="card">
-      <p class="card-title">Ledger Entries</p>
-      <p class="card-sub">Sample data often uses memo account ID <strong>9</strong> (“Over-Consumption Alerts”). After F8 fires you’ll see <strong>positive</strong> amounts here (deficit size).</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="card-title" style="margin:0">Ledger Entries</p>
+        <button class="help-btn" onclick="showHelp(event, this, 'ledger')">? Know more</button>
+      </div>
       <div class="field">
         <label for="accountId">Account ID</label>
         <input id="accountId" type="number" value="9" min="1">
         <button class="btn btn-primary" onclick="loadEntries()">Load</button>
       </div>
-      <p class="card-sub">Quick open memo accounts from the API:</p>
+      <div class="field" style="gap:8px">
+        <label>Filter:</label>
+        <button class="btn btn-ghost" id="filterAll"        onclick="setFilter('all')">Show All</button>
+        <button class="btn btn-ghost" id="filterConsumable" onclick="setFilter('consumable')">Consumable</button>
+        <button class="btn btn-ghost" id="filterAsset"      onclick="setFilter('asset')">Asset</button>
+      </div>
       <div id="memoShortcuts" class="field" style="flex-wrap:wrap;gap:8px"></div>
       <table>
         <thead>
-          <tr>
-            <th>Amount</th>
-            <th>Charged At</th>
-            <th>Booked At</th>
-          </tr>
+          <tr><th>Amount</th><th>Type</th><th>Charged At</th><th>Booked At</th></tr>
         </thead>
         <tbody id="entries"></tbody>
       </table>
     </div>
   </main>
   <script>
-    const API_BASE = "https://project4-backened.onrender.com";
+    let currentFilter = 'all';
+    let allEntries = [];
+
+    function setFilter(f) {
+      currentFilter = f;
+      document.querySelectorAll('[id^="filter"]').forEach(b => b.style.fontWeight = 'normal');
+      document.getElementById('filter' + f.charAt(0).toUpperCase() + f.slice(1)).style.fontWeight = 'bold';
+      renderEntries();
+    }
+
+    function entryType(e) {
+      return (e.accountName || '').toLowerCase().includes('asset') ? 'asset' : 'consumable';
+    }
+
+    function renderEntries() {
+      const tbody = document.getElementById("entries");
+      tbody.innerHTML = "";
+      const filtered = currentFilter === 'all' ? allEntries : allEntries.filter(e => entryType(e) === currentFilter);
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted)">No entries match this filter.</td></tr>`;
+        return;
+      }
+      filtered.forEach(e => {
+        const amount = Number(e.amount);
+        const row = document.createElement("tr");
+        row.innerHTML = `<td class="${amount < 0 ? "negative" : "positive"}">${amount.toFixed(2)}</td><td><span class="badge badge-pool">${entryType(e)}</span></td><td>${e.chargedAt ?? "—"}</td><td>${e.bookedAt ?? "—"}</td>`;
+        tbody.appendChild(row);
+      });
+    }
 
     async function loadMemoShortcuts() {
       const wrap = document.getElementById("memoShortcuts");
-      wrap.innerHTML = "";
       try {
         const accounts = await fetch(`${API_BASE}/api/accounts`).then(r => r.json());
         accounts.filter(a => a.kind === "ALERT_MEMO").forEach(a => {
           const b = document.createElement("button");
-          b.type = "button";
-          b.className = "btn btn-ghost";
+          b.type = "button"; b.className = "btn btn-ghost";
           b.textContent = `${a.name} (id ${a.id})`;
-          b.onclick = () => {
-            document.getElementById("accountId").value = a.id;
-            loadEntries();
-          };
+          b.onclick = () => { document.getElementById("accountId").value = a.id; loadEntries(); };
           wrap.appendChild(b);
         });
-        if (!wrap.childElementCount) {
-          wrap.innerHTML = `<span style="color:var(--muted)">No ALERT_MEMO accounts returned.</span>`;
-        }
+        if (!wrap.childElementCount) wrap.innerHTML = `<span style="color:var(--muted)">No alert memo accounts yet.</span>`;
       } catch {
         wrap.innerHTML = `<span style="color:var(--muted)">Could not load accounts.</span>`;
       }
@@ -71,24 +97,12 @@
     async function loadEntries() {
       const id = document.getElementById("accountId").value;
       const tbody = document.getElementById("entries");
-      tbody.innerHTML = "";
+      tbody.innerHTML = "Loading...";
       try {
-        const entries = await fetch(`${API_BASE}/api/accounts/${id}/entries`).then(r => r.json());
-        if (!entries.length) {
-          tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">No entries found.</td></tr>`;
-          return;
-        }
-        entries.forEach(e => {
-          const amount = Number(e.amount);
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td class="${amount < 0 ? "negative" : "positive"}">${amount.toFixed(2)}</td>
-            <td>${e.chargedAt ?? "—"}</td>
-            <td>${e.bookedAt ?? "—"}</td>`;
-          tbody.appendChild(row);
-        });
+        allEntries = await fetch(`${API_BASE}/api/accounts/${id}/entries`).then(r => r.json());
+        renderEntries();
       } catch {
-        tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted)">Could not reach backend.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted)">Could not reach backend.</td></tr>`;
       }
     }
 

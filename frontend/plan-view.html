@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plans — RPL</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="help.js"></script>
 </head>
 <body class="page">
   <header class="topbar">
@@ -20,57 +22,84 @@
   </header>
   <main class="main">
     <div class="card">
-      <p class="card-title">Plan Tree</p>
-      <p class="card-sub">View nested sub-plans and actions from <code>GET /api/plans/{id}</code>.</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="card-title" style="margin:0">Plan Tree</p>
+        <button class="help-btn" onclick="showHelp(event, this, 'plans')">? Know more</button>
+      </div>
       <div class="field">
         <label for="planId">Plan ID</label>
         <input id="planId" type="number" value="1" min="1">
         <button class="btn btn-primary" onclick="loadPlan()">Load</button>
       </div>
+      <div class="field" style="align-items:center;gap:12px">
+        <label for="depthSlider">Depth limit: <strong id="depthVal">5</strong></label>
+        <input id="depthSlider" type="range" min="1" max="10" value="5"
+               oninput="document.getElementById('depthVal').textContent=this.value; loadPlan()">
+      </div>
       <ul class="tree" id="tree"></ul>
+    </div>
+    <div class="card" id="metricsCard" style="display:none">
+      <p class="card-title">Plan Metrics</p>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody id="metricsBody"></tbody>
+      </table>
     </div>
   </main>
   <script>
-    const API_BASE = "https://project4-backened.onrender.com";
-
     function statusBadge(status) {
       const s = (status || "PROPOSED").toLowerCase();
       return `<span class="badge badge-${s}">${s}</span>`;
     }
 
-    /** Render a plan node (composite): actions then nested sub-plans (recursive). */
-    function renderPlanBranch(plan) {
+    function renderPlanBranchDepth(plan, currentDepth, depthLimit) {
       const li = document.createElement("li");
       li.innerHTML = `<span><strong>${plan.name}</strong></span>${statusBadge(plan.status || "PROPOSED")}`;
+      if (currentDepth >= depthLimit) {
+        li.innerHTML += ` <em style="color:var(--muted)">(collapsed)</em>`;
+        return li;
+      }
       const kids = document.createElement("ul");
       kids.className = "tree";
-
       (plan.actions || []).forEach(action => {
         const aLi = document.createElement("li");
         aLi.className = "tree-child";
         aLi.innerHTML = `<span>${action.name}</span>${statusBadge(action.status)}`;
         kids.appendChild(aLi);
       });
-
       (plan.subPlans || []).forEach(sub => {
-        kids.appendChild(renderPlanBranch(sub));
+        kids.appendChild(renderPlanBranchDepth(sub, currentDepth + 1, depthLimit));
       });
-
-      if (kids.childElementCount > 0) {
-        li.appendChild(kids);
-      }
+      if (kids.childElementCount > 0) li.appendChild(kids);
       return li;
     }
 
     async function loadPlan() {
       const id = document.getElementById("planId").value;
+      const depthLimit = parseInt(document.getElementById("depthSlider").value, 10);
       const tree = document.getElementById("tree");
       tree.innerHTML = "";
       try {
         const plan = await fetch(`${API_BASE}/api/plans/${id}`).then(r => r.json());
-        tree.appendChild(renderPlanBranch(plan));
+        tree.appendChild(renderPlanBranchDepth(plan, 0, depthLimit));
+        loadMetrics(id);
       } catch {
         tree.innerHTML = `<li style="color:var(--muted)">Could not load plan.</li>`;
+      }
+    }
+
+    async function loadMetrics(id) {
+      const card = document.getElementById("metricsCard");
+      const tbody = document.getElementById("metricsBody");
+      try {
+        const m = await fetch(`${API_BASE}/api/plans/${id}/metrics`).then(r => r.json());
+        tbody.innerHTML = `
+          <tr><td>Completion ratio</td><td>${(m.completionRatio * 100).toFixed(1)}% (${m.completedLeaves}/${m.totalLeaves} leaves)</td></tr>
+          <tr><td>Total resource cost</td><td>${m.totalResourceCost.toFixed(2)}</td></tr>
+          <tr><td>Risk score</td><td>${m.riskScore} suspended/abandoned leaf(s)</td></tr>`;
+        card.style.display = "block";
+      } catch {
+        card.style.display = "none";
       }
     }
   </script>

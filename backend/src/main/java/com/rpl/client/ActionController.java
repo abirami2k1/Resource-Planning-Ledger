@@ -27,7 +27,8 @@ public class ActionController {
     }
 
     @PostMapping("/{id}/suspend")
-    public ProposedAction suspend(@PathVariable Long id, @RequestBody(required = false) SuspendRequest body) {
+    public ProposedAction suspend(@PathVariable Long id,
+                                  @RequestBody(required = false) SuspendRequest body) {
         String reason = body != null && body.reason() != null ? body.reason() : "";
         return actionManager.suspendWithReason(id, reason);
     }
@@ -37,17 +38,57 @@ public class ActionController {
         return actionManager.getSuspensions(id);
     }
 
-    @PostMapping("/{id}/{event}")
-    public ProposedAction transition(@PathVariable Long id, @PathVariable String event) {
-        return actionManager.transition(id, event);
+    @PostMapping("/{id}/implement")
+    public ProposedAction implement(@PathVariable Long id) {
+        return actionManager.transition(id, "implement");
+    }
+
+    @PostMapping("/{id}/complete")
+    public ProposedAction complete(@PathVariable Long id) {
+        return actionManager.transition(id, "complete");
+    }
+
+    @PostMapping("/{id}/resume")
+    public ProposedAction resume(@PathVariable Long id) {
+        return actionManager.transition(id, "resume");
+    }
+
+    @PostMapping("/{id}/abandon")
+    public ProposedAction abandon(@PathVariable Long id) {
+        return actionManager.transition(id, "abandon");
+    }
+
+    // Week 2 endpoints
+    @PostMapping("/{id}/submitforapproval")
+    public ProposedAction submitForApproval(@PathVariable Long id) {
+        return actionManager.transition(id, "submitforapproval");
+    }
+
+    @PostMapping("/{id}/approve")
+    public ProposedAction approve(@PathVariable Long id) {
+        return actionManager.transition(id, "approve");
+    }
+
+    @PostMapping("/{id}/reject")
+    public ProposedAction reject(@PathVariable Long id) {
+        return actionManager.transition(id, "reject");
+    }
+
+    @PostMapping("/{id}/reopen")
+    public ProposedAction reopen(@PathVariable Long id) {
+        return actionManager.transition(id, "reopen");
     }
 
     @PostMapping("/{id}/allocations")
-    public ResourceAllocation allocate(@PathVariable Long id, @RequestBody AllocationRequest request) {
+    public ResourceAllocation allocate(@PathVariable Long id,
+                                       @RequestBody AllocationRequest request) {
         ResourceAllocation allocation = new ResourceAllocation();
         allocation.setQuantity(request.quantity());
         allocation.setKind(request.kind());
         allocation.setAssetId(request.assetId());
+        if (request.timePeriodHours() != null) {
+            allocation.setTimePeriodHours(request.timePeriodHours());
+        }
         return allocationManager.attach(id, request.resourceTypeId(), allocation);
     }
 }

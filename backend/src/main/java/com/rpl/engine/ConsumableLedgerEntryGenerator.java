@@ -9,6 +9,7 @@ import com.rpl.resourceaccess.AccountRepository;
 import com.rpl.resourceaccess.EntryRepository;
 import com.rpl.resourceaccess.LedgerTransactionRepository;
 import com.rpl.resourceaccess.ResourceAllocationRepository;
+import java.time.Clock;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -22,8 +23,9 @@ public class ConsumableLedgerEntryGenerator extends AbstractLedgerEntryGenerator
             AccountRepository accountRepository,
             PostingRuleEngine postingRuleEngine,
             AuditLogManager auditLogManager,
+            Clock clock,
             ResourceAllocationRepository allocationRepository) {
-        super(transactionRepository, entryRepository, accountRepository, postingRuleEngine, auditLogManager);
+        super(transactionRepository, entryRepository, accountRepository, postingRuleEngine, auditLogManager, clock);
         this.allocationRepository = allocationRepository;
     }
 
@@ -36,9 +38,9 @@ public class ConsumableLedgerEntryGenerator extends AbstractLedgerEntryGenerator
 
     @Override
     protected void validate(List<ResourceAllocation> allocations) {
-        for (ResourceAllocation allocation : allocations) {
-            if (allocation.getQuantity() <= 0) {
-                throw new ValidationException("Quantity must be positive");
+        for (ResourceAllocation a : allocations) {
+            if (a.getQuantity() <= 0) {
+                throw new ValidationException("Quantity must be positive for consumable allocation id=" + a.getId());
             }
         }
     }

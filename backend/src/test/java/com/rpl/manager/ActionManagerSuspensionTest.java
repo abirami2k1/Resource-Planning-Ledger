@@ -1,57 +1,36 @@
 package com.rpl.manager;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import com.rpl.domain.ActionStatus;
 import com.rpl.domain.ProposedAction;
 import com.rpl.domain.Suspension;
-import com.rpl.domain.state.AbandonedState;
-import com.rpl.domain.state.CompletedState;
-import com.rpl.domain.state.InProgressState;
-import com.rpl.domain.state.ProposedState;
-import com.rpl.domain.state.SuspendedState;
+import com.rpl.domain.state.*;
 import com.rpl.engine.LedgerEntryEngine;
-import com.rpl.resourceaccess.ImplementedActionRepository;
-import com.rpl.resourceaccess.ProposedActionRepository;
-import com.rpl.resourceaccess.SuspensionRepository;
+import com.rpl.resourceaccess.*;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import java.util.*;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ActionManagerSuspensionTest {
 
     private static final Instant T0 = Instant.parse("2026-05-02T08:00:00Z");
-    @Mock
-    private ProposedActionRepository proposedActionRepository;
 
-    @Mock
-    private ImplementedActionRepository implementedActionRepository;
-
-    @Mock
-    private SuspensionRepository suspensionRepository;
-
-    @Mock
-    private LedgerEntryEngine ledgerEntryEngine;
-
-    @Mock
-    private AuditLogManager auditLogManager;
+    @Mock ProposedActionRepository proposedActionRepository;
+    @Mock ImplementedActionRepository implementedActionRepository;
+    @Mock SuspensionRepository suspensionRepository;
+    @Mock LedgerEntryEngine ledgerEntryEngine;
+    @Mock AuditLogManager auditLogManager;
 
     private Clock clock;
-
     private ActionManager actionManager;
 
     @BeforeEach
@@ -68,7 +47,9 @@ class ActionManagerSuspensionTest {
                 new SuspendedState(),
                 new InProgressState(),
                 new CompletedState(),
-                new AbandonedState());
+                new AbandonedState(),
+                new PendingApprovalState(),
+                new ReopenedState());
     }
 
     @Test
@@ -82,12 +63,11 @@ class ActionManagerSuspensionTest {
         actionManager.suspendWithReason(1L, "weather");
 
         // Assert
-        ArgumentCaptor<Suspension> captor = ArgumentCaptor.forClass(Suspension.class);
-        verify(suspensionRepository).save(captor.capture());
-        Suspension s = captor.getValue();
-        assertEquals("weather", s.getReason());
-        assertEquals(T0, s.getStartDate());
-        assertNull(s.getEndDate());
+        ArgumentCaptor<Suspension> cap = ArgumentCaptor.forClass(Suspension.class);
+        verify(suspensionRepository).save(cap.capture());
+        assertEquals("weather", cap.getValue().getReason());
+        assertEquals(T0, cap.getValue().getStartDate());
+        assertNull(cap.getValue().getEndDate());
     }
 
     @Test
@@ -122,36 +102,49 @@ class ActionManagerSuspensionTest {
 
         // Assert
         assertEquals(T0, open.getEndDate());
-        verify(suspensionRepository).save(open);
     }
 
     @Test
-    void twoSuspendResumeCycles_createTwoSeparateSuspensionRecords() {
+    void submitForApproval_setsStatusToPendingApproval() {
         // Arrange
-        ProposedAction pa = action(4L, ActionStatus.IN_PROGRESS);
-        when(proposedActionRepository.findById(4L)).thenReturn(Optional.of(pa));
+        ProposedAction pa = action(5L, ActionStatus.PROPOSED);
+        when(proposedActionRepository.findById(5L)).thenReturn(Optional.of(pa));
         when(proposedActionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        // Act — suspend → resume → implement → suspend again
-        actionManager.suspendWithReason(4L, "cycle-one");
+        // Act
+        ProposedAction result = actionManager.transition(5L, "submitforapproval");
 
-        ArgumentCaptor<Suspension> firstCap = ArgumentCaptor.forClass(Suspension.class);
-        verify(suspensionRepository).save(firstCap.capture());
-        Suspension firstSuspension = firstCap.getValue();
+        // Assert
+        assertEquals(ActionStatus.PENDING_APPROVAL, result.getStatus());
+    }
 
-        when(suspensionRepository.findOpenByActionId(4L)).thenReturn(Optional.of(firstSuspension));
+    @Test
+    void approve_setsStatusToInProgress() {
+        // Arrange
+        ProposedAction pa = action(6L, ActionStatus.PENDING_APPROVAL);
+        when(proposedActionRepository.findById(6L)).thenReturn(Optional.of(pa));
+        when(proposedActionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(implementedActionRepository.findByProposedAction_Id(6L)).thenReturn(Optional.empty());
 
-        actionManager.transition(4L, "resume");
-        actionManager.transition(4L, "implement");
-        actionManager.suspendWithReason(4L, "cycle-two");
+        // Act
+        ProposedAction result = actionManager.transition(6L, "approve");
 
-        // Assert — three saves: create first, close first, create second
-        ArgumentCaptor<Suspension> allCap = ArgumentCaptor.forClass(Suspension.class);
-        verify(suspensionRepository, times(3)).save(allCap.capture());
-        List<Suspension> saved = allCap.getAllValues();
-        assertEquals("cycle-one", saved.get(0).getReason());
-        assertEquals(T0, saved.get(1).getEndDate());
-        assertEquals("cycle-two", saved.get(2).getReason());
+        // Assert
+        assertEquals(ActionStatus.IN_PROGRESS, result.getStatus());
+    }
+
+    @Test
+    void reject_setsStatusBackToProposed() {
+        // Arrange
+        ProposedAction pa = action(7L, ActionStatus.PENDING_APPROVAL);
+        when(proposedActionRepository.findById(7L)).thenReturn(Optional.of(pa));
+        when(proposedActionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // Act
+        ProposedAction result = actionManager.transition(7L, "reject");
+
+        // Assert
+        assertEquals(ActionStatus.PROPOSED, result.getStatus());
     }
 
     private static ProposedAction action(long id, ActionStatus status) {

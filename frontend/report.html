@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Report — RPL</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="help.js"></script>
 </head>
 <body class="page">
   <header class="topbar">
@@ -20,8 +22,10 @@
   </header>
   <main class="main">
     <div class="card">
-      <p class="card-title">Plan Report</p>
-      <p class="card-sub">Depth-first traversal summary for a plan.</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="card-title" style="margin:0">Plan Report</p>
+        <button class="help-btn" onclick="showHelp(event, this, 'report')">? Know more</button>
+      </div>
       <div class="field">
         <label for="planId">Plan ID</label>
         <input id="planId" type="number" value="1" min="1">
@@ -36,7 +40,7 @@
       const pre = document.getElementById("report");
       pre.textContent = "Loading...";
       try {
-        const report = await fetch(`https://project4-backened.onrender.com/api/plans/${planId}/report`).then(r => r.json());
+        const report = await fetch(`${API_BASE}/api/plans/${planId}/report`).then(r => r.json());
         pre.textContent = report.join("\n");
       } catch (e) {
         pre.textContent = "Error: " + e.message;

@@ -1,6 +1,7 @@
 package com.rpl.client;
 
 import com.rpl.client.dto.PlanCreateRequest;
+import com.rpl.client.dto.PlanMetricsResponse;
 import com.rpl.domain.Plan;
 import com.rpl.manager.PlanManager;
 import com.rpl.manager.ReportManager;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -38,8 +40,16 @@ public class PlanController {
         return planManager.list();
     }
 
+    /** Depth-first summary report. Optional ?status=PROPOSED|IN_PROGRESS|... filters nodes. */
     @GetMapping("/{id}/report")
-    public List<String> report(@PathVariable Long id) {
-        return reportManager.planReport(id);
+    public List<String> report(@PathVariable Long id,
+                               @RequestParam(required = false) String status) {
+        return reportManager.planReport(id, status);
+    }
+
+    /** GET /api/plans/{id}/metrics — returns completion ratio, resource cost, risk score. */
+    @GetMapping("/{id}/metrics")
+    public PlanMetricsResponse metrics(@PathVariable Long id) {
+        return planManager.metrics(id);
     }
 }

@@ -37,6 +37,7 @@ public class ResourceTypeManager {
 
     public ResourceType create(ResourceType resourceType) {
         ResourceType saved = resourceTypeRepository.save(resourceType);
+
         Account pool = new Account();
         pool.setName("Pool:" + saved.getName());
         pool.setKind(AccountKind.POOL);
@@ -55,11 +56,14 @@ public class ResourceTypeManager {
         rule.setStrategyType("UNDER_BALANCE_ALERT");
         postingRuleRepository.save(rule);
 
-        return saved;
+        // Link pool account back to ResourceType (spec: ResourceType has poolAccount field)
+        saved.setPoolAccount(savedPool);
+        return resourceTypeRepository.save(saved);
     }
 
     public void delete(Long id) {
-        ResourceType existing = resourceTypeRepository.findById(id).orElseThrow(() -> new NotFoundException("Resource type not found"));
+        ResourceType existing = resourceTypeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Resource type not found"));
         if (allocationRepository.countByResourceTypeId(id) > 0) {
             throw new ConflictException("Resource type has active allocations");
         }
