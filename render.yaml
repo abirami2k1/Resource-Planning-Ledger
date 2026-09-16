@@ -1,0 +1,29 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: Render dashboard → New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: rpl-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/accounts
+    envVars:
+      - key: DB_HOST
+        fromDatabase: { name: rpl-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: rpl-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: rpl-db, property: database }
+      - key: DB_USERNAME
+        fromDatabase: { name: rpl-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: rpl-db, property: password }
+      - key: JAVA_TOOL_OPTIONS
+        value: -Xmx384m
+
+databases:
+  - name: rpl-db
+    plan: free
+    databaseName: rpl
+    user: rpl_user
